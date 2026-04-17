@@ -20,3 +20,17 @@ Backend API for managing personal trainer operations, including:
 - Scalable structure
 
 ## Project Structure
+
+src/
+routes/
+controllers/
+services/
+database/
+middlewares/
+
+
+## Running the project
+
+```bash
+npm install
+npm run dev

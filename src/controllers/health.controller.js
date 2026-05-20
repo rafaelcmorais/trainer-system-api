@@ -1,1 +1,5 @@
-const express = require('express')
+function healthController(req, res) {
+    res.json({ "status": "ok" })
+}
+
+module.exports = healthController

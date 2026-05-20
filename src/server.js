@@ -1,19 +1,8 @@
-const healthRoutes = require('./routes/health.routes')
+require('dotenv').config()
 
+const app = require('./app')
 
-
-const express = require ('express')
-const router = require('./routes/health.routes')
-const  app = express()
-const port = 3000
-
-
-app.get ('/', (req, res) => {
-    res.send('Hello World!')
-})
-
-app.use(healthRoutes)
-
+const port = process.env.APP_PORT || 3000
 app.listen(port, () => {
     console.log(` app está sendo executado na porta ${port} `)
 })

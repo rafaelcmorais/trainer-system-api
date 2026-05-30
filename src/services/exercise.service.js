@@ -16,7 +16,29 @@ async function getAllExercises() {
     return exercises
 }
 
+async function getExerciseById(id) {
+    const exercise = await exerciseRepository.getExerciseById(id)
+    return exercise
+
+}
+
+async function updateExercise(id, data) {
+    const updatedExercise = await exerciseRepository.updateExercise(id, data)
+
+    return updatedExercise
+}
+
+async function deleteExercise(id) {
+    const deletedExercise = await exerciseRepository.deleteExercise(id)
+
+    return deletedExercise
+
+}
+
 module.exports = {
     createExercise,
-    getAllExercises
+    getAllExercises,
+    getExerciseById,
+    updateExercise,
+    deleteExercise
 }

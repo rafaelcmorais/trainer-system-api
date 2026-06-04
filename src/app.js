@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth.routes')
 const exerciseRoutes = require('./routes/exercise.routes')
 const workoutRoutes = require('./routes/workout.routes')
 const studentRoutes = require('./routes/student.routes')
+const workoutExercisesRoutes = require('./routes/workoutExercise.routes')
 
 app.use(express.json())
 
@@ -23,6 +24,8 @@ app.use(exerciseRoutes)
 app.use(workoutRoutes)
 
 app.use(studentRoutes)
+
+app.use(workoutExercisesRoutes)
 
 
 

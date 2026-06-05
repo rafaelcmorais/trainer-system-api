@@ -34,6 +34,7 @@ async function getExercisesByWorkoutId(workoutId) {
             we.sets,
             we.reps,
             we.rest_time,
+            we.notes,
             we.exercise_order
         FROM workout_exercises we
         JOIN exercises e ON e.id = we.exercise_id
@@ -44,10 +45,34 @@ async function getExercisesByWorkoutId(workoutId) {
         [workoutId]
     )
     return result.rows
+}
+
+async function deleteWorkoutExercise(id) {
+    try {
+
+        const result = await pool.query(
+            `UPDATE workout_exercises
+            SET is_active = false,
+                deleted_at = NOW()
+                WHERE id = $1 AND is_active = true
+            RETURNING id, workout_id, exercise_id, deleted_at` ,
+            [id])
+
+        if (result.rows.length === 0) {
+            return null
+        }
+        return result.rows[0] || null
+    } catch (err) {
+
+        console.error('Erro ao remover exercício do treino', err);
+        throw new Error('Erro ao desativar vínculo treino-exercício');
+
+    }
 
 }
 
 module.exports = {
     addExerciseToWorkout,
-    getExercisesByWorkoutId
+    getExercisesByWorkoutId,
+    deleteWorkoutExercise
 }

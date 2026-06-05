@@ -47,6 +47,29 @@ async function addExerciseToWorkout(data) {
     return workoutExercise
 }
 
+async function getExercisesByWorkoutId(workoutId) {
+    const parsedWorkoutId = Number(workoutId)
+
+    if (!Number.isInteger(parsedWorkoutId) || parsedWorkoutId <= 0) {
+        const err = new Error('invalid workout_id')
+        err.status = 400
+        throw err
+    }
+
+    const workout = await workoutRepository.getWorkoutById(parsedWorkoutId)
+
+    if (!workout) {
+        const err = new Error('workout not found or inactive')
+        err.status = 404
+        throw err
+    }
+
+    const exercises = await workoutExerciseRepository.getExercisesByWorkoutId(parsedWorkoutId)
+
+    return exercises
+}
+
 module.exports = {
-    addExerciseToWorkout
+    addExerciseToWorkout,
+    getExercisesByWorkoutId
 }

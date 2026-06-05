@@ -13,6 +13,32 @@ async function addExerciseToWorkout(req, res, next) {
     }
 
 }
+
+async function getExercisesByWorkoutId(req, res, next) {
+    const id = Number(req.params.id)
+
+    if (isNaN(id)) {
+        const err = new Error("invalid id")
+        err.status = 400
+        return next(err)
+    }
+
+    try {
+        const workoutExercises = await workoutExerciseService.getExercisesByWorkoutId(id)
+        // if (!workoutExercises) {
+        //     const err = new Error("workout not found or inactive")
+        //     err.status = 404
+        //     return next(err)
+        // }
+        return res.json(workoutExercises)
+    } catch (err) {
+        next(err)
+    }
+
+}
+
+
 module.exports = {
-    addExerciseToWorkout
+    addExerciseToWorkout,
+    getExercisesByWorkoutId
 }

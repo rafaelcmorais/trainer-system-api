@@ -71,8 +71,52 @@ async function deleteWorkoutExercise(id) {
 
 }
 
+async function updateWorkoutExercise(id, data) {
+
+    const { sets, reps, rest_time, notes, exercise_order } = data
+
+    try {
+        const result = await pool.query(`
+        UPDATE workout_exercises
+        SET
+            sets = COALESCE($1, sets),
+            reps = COALESCE($2, reps),
+            rest_time = COALESCE($3, rest_time),
+            notes = COALESCE($4, notes),
+            exercise_order = COALESCE($5, exercise_order),
+            updated_at = NOW()
+            WHERE id = $6
+            AND is_active = true
+            RETURNING
+                id,
+                workout_id,
+                exercise_id,
+                sets,
+                reps,
+                rest_time,
+                notes,
+                exercise_order`,
+            [sets, reps, rest_time, notes, exercise_order, id]
+        )
+
+        return result.rows[0] || null
+
+
+    } catch (err) {
+        console.error('Erro ao atualizar exercício do treino', err)
+        throw new Error('Erro ao atualizar exercicio do treino no banco de dados')
+    }
+
+}
+
+
+
+
+
+
 module.exports = {
     addExerciseToWorkout,
     getExercisesByWorkoutId,
-    deleteWorkoutExercise
+    deleteWorkoutExercise,
+    updateWorkoutExercise
 }

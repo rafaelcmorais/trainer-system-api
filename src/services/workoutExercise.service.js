@@ -75,9 +75,17 @@ async function deleteWorkoutExercise(id) {
     return deletedWorkoutExercise
 }
 
+async function updateWorkoutExercise(id, data) {
+    const updatedWorkoutExercise = await workoutExerciseRepository.updateWorkoutExercise(id, data)
+
+    return updatedWorkoutExercise
+
+}
+
 
 module.exports = {
     addExerciseToWorkout,
     getExercisesByWorkoutId,
-    deleteWorkoutExercise
+    deleteWorkoutExercise,
+    updateWorkoutExercise
 }

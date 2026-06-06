@@ -57,9 +57,38 @@ async function deleteWorkoutExercise(req, res, next) {
     }
 }
 
+async function updateWorkoutExercise(req, res, next) {
+    const id = Number(req.params.id)
+
+    if (isNaN(id) || id <= 0) {
+        const err = new Error("invalid id")
+        err.status = 400
+        return next(err)
+    }
+
+    try {
+        const workoutExercise = await workoutExerciseService.updateWorkoutExercise(id, req.body)
+
+        if (!workoutExercise) {
+            const err = new Error("exercise not found in workout")
+            err.status = 404
+            return next(err)
+        }
+        return res.json({
+            message: "workout exercise updated",
+            data: workoutExercise
+        })
+    } catch (err) {
+        next(err)
+    }
+
+
+}
+
 
 module.exports = {
     addExerciseToWorkout,
     getExercisesByWorkoutId,
-    deleteWorkoutExercise
+    deleteWorkoutExercise,
+    updateWorkoutExercise
 }

@@ -1,8 +1,8 @@
 const express = require('express')
-const { addExerciseToWorkout, getExercisesByWorkoutId, deleteWorkoutExercise } = require('../controllers/workoutExercise.controller')
+const { addExerciseToWorkout, getExercisesByWorkoutId, deleteWorkoutExercise, updateWorkoutExercise } = require('../controllers/workoutExercise.controller')
 const validate = require('../middlewares/validation.middleware')
 const authMiddleware = require('../middlewares/auth.middleware')
-const { addExerciseToWorkoutSchema } = require('../schemas/workoutExercise.schema')
+const { addExerciseToWorkoutSchema, updateWorkoutExerciseSchema } = require('../schemas/workoutExercise.schema')
 
 
 
@@ -14,6 +14,8 @@ router.post('/workout-exercises', authMiddleware, validate(addExerciseToWorkoutS
 router.get('/workouts/:id/exercises', authMiddleware, getExercisesByWorkoutId)
 
 router.delete('/workout-exercises/:id', authMiddleware, deleteWorkoutExercise)
+
+router.put('/workout-exercises/:id', authMiddleware, validate(updateWorkoutExerciseSchema), updateWorkoutExercise)
 
 
 

@@ -25,11 +25,7 @@ async function getExercisesByWorkoutId(req, res, next) {
 
     try {
         const workoutExercises = await workoutExerciseService.getExercisesByWorkoutId(id)
-        // if (!workoutExercises) {
-        //     const err = new Error("workout not found or inactive")
-        //     err.status = 404
-        //     return next(err)
-        // }
+
         return res.json(workoutExercises)
     } catch (err) {
         next(err)

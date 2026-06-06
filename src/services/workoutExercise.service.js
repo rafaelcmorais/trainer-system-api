@@ -8,6 +8,9 @@ async function addExerciseToWorkout(data) {
     const parsedWorkoutId = Number(workout_id)
     const parsedExerciseId = Number(exercise_id)
 
+
+
+
     if (
         !Number.isInteger(parsedExerciseId) ||
         !Number.isInteger(parsedWorkoutId) ||
@@ -34,6 +37,15 @@ async function addExerciseToWorkout(data) {
         err.status = 404
         throw err
     }
+
+    const link = await workoutExerciseRepository.findActiveWorkoutExercise(parsedWorkoutId, parsedExerciseId)
+
+    if (link) {
+        const err = new Error("exercise already added to this workout")
+        err.status = 409
+        throw err
+    }
+
 
     const workoutExercise = await workoutExerciseRepository.addExerciseToWorkout({
         workout_id: parsedWorkoutId,

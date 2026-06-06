@@ -109,7 +109,18 @@ async function updateWorkoutExercise(id, data) {
 
 }
 
-
+async function findActiveWorkoutExercise(workoutId, exerciseId) {
+    const result = await pool.query(
+        `SELECT id
+        FROM workout_exercises
+        WHERE workout_id = $1
+        AND exercise_id = $2
+        AND is_active = true
+        LIMIT 1`,
+        [workoutId, exerciseId]
+    )
+    return result.rows[0] || null
+}
 
 
 
@@ -118,5 +129,6 @@ module.exports = {
     addExerciseToWorkout,
     getExercisesByWorkoutId,
     deleteWorkoutExercise,
-    updateWorkoutExercise
+    updateWorkoutExercise,
+    findActiveWorkoutExercise
 }

@@ -3,7 +3,7 @@ const workoutRepository = require('../repositories/workout.repository')
 const exerciseRepository = require('../repositories/exercise.repository')
 
 async function addExerciseToWorkout(data) {
-    const { workout_id, exercise_id, sets, reps, rest_time, notes, exercise_order } = data
+    const { workout_id, exercise_id, load_kg, sets, reps, rest_time, notes, exercise_order } = data
 
     const parsedWorkoutId = Number(workout_id)
     const parsedExerciseId = Number(exercise_id)
@@ -52,6 +52,7 @@ async function addExerciseToWorkout(data) {
         exercise_id: parsedExerciseId,
         sets,
         reps,
+        load_kg,
         rest_time,
         notes,
         exercise_order

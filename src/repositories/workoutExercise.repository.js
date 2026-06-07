@@ -6,6 +6,7 @@ async function addExerciseToWorkout(data) {
         exercise_id,
         sets,
         reps,
+        load_kg,
         rest_time,
         notes,
         exercise_order
@@ -13,10 +14,10 @@ async function addExerciseToWorkout(data) {
 
     const result = await pool.query(
         `INSERT INTO workout_exercises
-        (workout_id, exercise_id, sets, reps, rest_time, notes, exercise_order)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, workout_id, exercise_id, sets, reps, rest_time, notes, exercise_order, is_active`,
-        [workout_id, exercise_id, sets, reps, rest_time, notes, exercise_order]
+        (workout_id, exercise_id, sets, reps, load_kg, rest_time, notes, exercise_order)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id, workout_id, exercise_id, sets, reps, load_kg, rest_time, notes, exercise_order, is_active`,
+        [workout_id, exercise_id, sets, reps, load_kg, rest_time, notes, exercise_order]
     )
     return result.rows[0]
 
@@ -33,6 +34,7 @@ async function getExercisesByWorkoutId(workoutId) {
             e.equipment,
             we.sets,
             we.reps,
+            we.load_kg,
             we.rest_time,
             we.notes,
             we.exercise_order
@@ -53,8 +55,9 @@ async function deleteWorkoutExercise(id) {
         const result = await pool.query(
             `UPDATE workout_exercises
             SET is_active = false,
-                deleted_at = NOW()
-                WHERE id = $1 AND is_active = true
+                deleted_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $1 AND is_active = true
             RETURNING id, workout_id, exercise_id, deleted_at` ,
             [id])
 
@@ -73,7 +76,7 @@ async function deleteWorkoutExercise(id) {
 
 async function updateWorkoutExercise(id, data) {
 
-    const { sets, reps, rest_time, notes, exercise_order } = data
+    const { sets, reps, load_kg, rest_time, notes, exercise_order } = data
 
     try {
         const result = await pool.query(`
@@ -81,11 +84,12 @@ async function updateWorkoutExercise(id, data) {
         SET
             sets = COALESCE($1, sets),
             reps = COALESCE($2, reps),
-            rest_time = COALESCE($3, rest_time),
-            notes = COALESCE($4, notes),
-            exercise_order = COALESCE($5, exercise_order),
+            load_kg = COALESCE($3, load_kg),
+            rest_time = COALESCE($4, rest_time),
+            notes = COALESCE($5, notes),
+            exercise_order = COALESCE($6, exercise_order),
             updated_at = NOW()
-            WHERE id = $6
+            WHERE id = $7
             AND is_active = true
             RETURNING
                 id,
@@ -93,10 +97,11 @@ async function updateWorkoutExercise(id, data) {
                 exercise_id,
                 sets,
                 reps,
+                load_kg,
                 rest_time,
                 notes,
                 exercise_order`,
-            [sets, reps, rest_time, notes, exercise_order, id]
+            [sets, reps, load_kg, rest_time, notes, exercise_order, id]
         )
 
         return result.rows[0] || null

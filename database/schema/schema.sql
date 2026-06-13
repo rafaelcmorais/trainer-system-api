@@ -151,7 +151,12 @@ CREATE TABLE public.workout_exercises (
     deleted_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
-    load_kg numeric(6,2)
+    load_kg numeric(6,2),
+    CONSTRAINT workout_exercises_exercise_order_check CHECK (((exercise_order IS NULL) OR (exercise_order > 0))),
+    CONSTRAINT workout_exercises_load_kg_check CHECK (((load_kg IS NULL) OR (load_kg >= (0)::numeric))),
+    CONSTRAINT workout_exercises_reps_check CHECK (((reps IS NULL) OR (reps > 0))),
+    CONSTRAINT workout_exercises_rest_time_check CHECK (((rest_time IS NULL) OR (rest_time >= 0))),
+    CONSTRAINT workout_exercises_sets_check CHECK (((sets IS NULL) OR (sets > 0)))
 );
 
 

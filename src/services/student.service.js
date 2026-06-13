@@ -1,7 +1,7 @@
 const studentRepository = require('../repositories/student.repository')
 
 async function createStudent(data) {
-    const { name, email, phone, height } = data
+    const { name, email, phone, height, weight_kg, sex } = data
     const is_active = true
 
     const student = await studentRepository.createStudent({
@@ -9,11 +9,12 @@ async function createStudent(data) {
         email,
         phone,
         height,
+        weight_kg,
+        sex,
         is_active
     })
 
     return student
-
 }
 
 async function getAllStudents() {
@@ -25,20 +26,17 @@ async function getStudentById(id) {
     const studentById = await studentRepository.getStudentById(id)
 
     return studentById
-
 }
 
 async function updateStudent(id, data) {
     const updatedStudent = await studentRepository.updateStudent(id, data)
 
     return updatedStudent
-
 }
 
 async function deleteStudent(id) {
     const deletedStudent = await studentRepository.deleteStudent(id)
     return deletedStudent
-
 }
 
 module.exports = {

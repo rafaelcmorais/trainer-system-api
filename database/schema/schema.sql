@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict S1BmCazP2ZzGCqUIBHYZ7iR63sAQ9HJ5ILenWCMlrKdzJPJ7QyQfBN1VOWeghBL
+\restrict PfE3UeWIUMzreC58nEvihslG9GWR2r3OyY1nLntIgrzhSPokS9OtTdqLFxIaMnm
 
 -- Dumped from database version 15.18 (Debian 15.18-1.pgdg13+1)
 -- Dumped by pg_dump version 15.18 (Debian 15.18-1.pgdg13+1)
@@ -71,7 +71,9 @@ CREATE TABLE public.students (
     is_active boolean DEFAULT true,
     deleted_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now()
+    updated_at timestamp without time zone DEFAULT now(),
+    weight_kg numeric(5,2),
+    sex text
 );
 
 
@@ -324,5 +326,5 @@ ALTER TABLE ONLY public.workouts
 -- PostgreSQL database dump complete
 --
 
-\unrestrict S1BmCazP2ZzGCqUIBHYZ7iR63sAQ9HJ5ILenWCMlrKdzJPJ7QyQfBN1VOWeghBL
+\unrestrict PfE3UeWIUMzreC58nEvihslG9GWR2r3OyY1nLntIgrzhSPokS9OtTdqLFxIaMnm
 

@@ -73,7 +73,8 @@ CREATE TABLE public.students (
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
     weight_kg numeric(5,2),
-    sex text
+    sex text,
+    CONSTRAINT students_sex_check CHECK (((sex IS NULL) OR (sex = ANY (ARRAY['male'::text, 'female'::text, 'other'::text, 'not_informed'::text]))))
 );
 
 

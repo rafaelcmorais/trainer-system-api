@@ -1,248 +1,171 @@
 # Trainer System API
 
-API backend para gerenciamento de alunos, treinos, exercícios e montagem de treinos com múltiplos exercícios.
+API backend para gerenciamento de alunos, exercícios, treinos e vínculos entre treinos e exercícios.
 
-O projeto começou como uma API CRUD simples e evoluiu para uma aplicação backend estruturada em camadas, com autenticação JWT, validação com Zod, PostgreSQL, Docker e relacionamento real entre entidades.
-# Trainer System API
+O projeto foi desenvolvido em Node.js/Express com PostgreSQL, Docker, JWT, Zod, Prettier e arquitetura em camadas.
 
-API backend para gerenciamento de usuários, alunos, exercícios, treinos e associação de exercícios aos treinos.
+## Objetivo do projeto
 
-O objetivo do projeto é permitir que usuários autenticados possam cadastrar alunos, criar treinos, manter um catálogo reutilizável de exercícios e montar treinos personalizados associando vários exercícios a um treino.
+O Trainer System API tem como objetivo apoiar a organização de treinos em um sistema de personal trainer ou academia.
 
----
+A API permite:
 
-## Stack utilizada
+- cadastrar usuários do sistema;
+- autenticar usuários com JWT;
+- cadastrar alunos;
+- cadastrar exercícios em um catálogo reutilizável;
+- criar treinos para alunos;
+- vincular exercícios do catálogo a treinos;
+- definir séries, repetições, carga, descanso, observações e ordem dos exercícios no treino.
+
+## Tecnologias utilizadas
 
 - Node.js
 - Express
 - PostgreSQL
-- Docker Compose
+- Docker
 - JWT
-- bcrypt
 - Zod
-- dotenv
+- Jest
+- Supertest
+- Prettier
+- Nodemon
 
----
-
-## Arquitetura do projeto
+## Arquitetura
 
 O projeto segue arquitetura em camadas:
 
 ```text
-Route
-↓
-Controller
-↓
-Service
-↓
-Repository
-↓
-Database
+Route → Controller → Service → Repository → Database
 ```
 
-### Routes
+Responsabilidades:
 
-Responsáveis por:
+- **Routes**: definem endpoints e aplicam middlewares.
+- **Controllers**: lidam com `req`, `res` e `next`.
+- **Services**: concentram regras de negócio.
+- **Repositories**: concentram SQL e acesso ao banco.
+- **Database**: persistência em PostgreSQL.
 
-- mapear endpoints
-- aplicar middlewares
-- chamar controllers
+Essa separação ajuda a manter o código organizado, testável e fácil de evoluir.
 
-### Controllers
+## Módulos implementados
 
-Responsáveis por:
+Os módulos consolidados atualmente são:
 
-- receber `req`, `res` e `next`
-- capturar parâmetros da URL
-- capturar dados do body
-- chamar services
-- responder com status HTTP
-- enviar erros para `next(err)`
+- `users`
+- `auth`
+- `students`
+- `exercises`
+- `workouts`
+- `workout_exercises`
 
-Controllers não devem acessar banco de dados diretamente.
+## Autenticação
 
-### Services
+A API utiliza autenticação com JWT.
 
-Responsáveis por:
+Endpoint de login:
 
-- concentrar regras de negócio
-- validar existência de registros ativos
-- coordenar chamadas aos repositories
-- tratar casos de erro de negócio
-
-Services não devem lidar diretamente com `req` e `res`.
-
-### Repositories
-
-Responsáveis por:
-
-- executar queries SQL
-- acessar o banco de dados
-- retornar dados persistidos
-
----
-
-## Padrões do projeto
-
-### JavaScript
-
-Usar `camelCase`.
-
-Exemplos:
-
-```js
-createWorkout
-getWorkoutById
-addExerciseToWorkout
-getExercisesByWorkoutId
-updateWorkoutExercise
-deleteWorkoutExercise
+```http
+POST /auth/login
 ```
 
-### Banco de dados e JSON da API
+Exemplo de body:
 
-Usar `snake_case`.
-
-Exemplos:
-
-```text
-student_id
-workout_id
-exercise_id
-muscle_group
-rest_time
-exercise_order
-is_active
-deleted_at
-created_at
-updated_at
+```json
+{
+    "email": "usuario@email.com",
+    "password": "senha"
+}
 ```
 
----
+As rotas principais são protegidas com `authMiddleware`.
+
+Exemplo de uso do token:
+
+```bash
+curl http://localhost:3000/students \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+## Validação
+
+As validações de entrada são feitas com Zod.
+
+O projeto utiliza:
+
+- `.strict()` para bloquear campos não permitidos;
+- validação de tipos;
+- validação de campos obrigatórios;
+- validações numéricas;
+- enums;
+- bloqueio de body vazio em updates.
+
+As validações acontecem antes dos dados chegarem aos controllers, services, repositories e banco de dados.
 
 ## Soft delete
 
-O projeto utiliza soft delete nas principais entidades.
+O projeto utiliza soft delete.
 
-Padrão:
-
-```sql
-is_active = false,
-deleted_at = NOW()
-```
-
-O `DELETE` não remove fisicamente os registros principais do banco.
-
-Entidades com soft delete:
-
-- users
-- students
-- exercises
-- workouts
-- workout_exercises
-
----
-
-## Autenticação
-
-As rotas protegidas exigem token JWT no header:
-
-```http
-Authorization: Bearer TOKEN
-```
-
-Exemplo:
-
-```bash
--H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## Variáveis de ambiente
-
-Exemplo de `.env`:
-
-```env
-PORT=3000
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=minha_api
-JWT_SECRET=sua_chave_secreta
-```
-
-Ajuste os valores conforme o ambiente local.
-
----
-
-## Rodando o projeto
-
-Instalar dependências:
-
-```bash
-npm install
-```
-
-Subir o banco com Docker Compose:
-
-```bash
-docker compose up -d
-```
-
-Rodar a aplicação em desenvolvimento:
-
-```bash
-npm run dev
-```
-
-A aplicação deve iniciar em:
+O padrão adotado é:
 
 ```text
-http://localhost:3000
+is_active = false
+deleted_at = NOW()
+updated_at = NOW()
 ```
 
----
+Quando um registro é removido pela API, ele não é apagado fisicamente do banco. Ele é marcado como inativo.
 
-## Health check
+Esse padrão foi aplicado aos módulos principais, incluindo:
 
-### GET /health
+- users;
+- students;
+- exercises;
+- workouts;
+- workout_exercises.
 
-Verifica se a API está online.
+## Banco de dados
+
+O banco utilizado é PostgreSQL.
+
+O schema versionado do banco está em:
+
+```text
+database/schema/schema.sql
+```
+
+Esse arquivo representa a estrutura atual do banco de dados.
+
+Para gerar o schema via Docker:
 
 ```bash
-curl -i http://localhost:3000/health
+docker exec -i trainer-system-api-postgres-1 pg_dump -U meu_user -d minha_api --schema-only --no-owner --no-privileges > database/schema/schema.sql
 ```
 
----
-
-## Autenticação
-
-### POST /auth/login
-
-Realiza login e retorna um token JWT.
+Para limpar possíveis problemas de final de linha e espaços em branco:
 
 ```bash
-curl -i -X POST http://localhost:3000/auth/login \
--H "Content-Type: application/json" \
--d '{
-  "email": "admin@teste.com",
-  "password": "SUA_SENHA"
-}'
+sed -i 's/\r$//' database/schema/schema.sql
+sed -i 's/[[:blank:]]\+$//' database/schema/schema.sql
 ```
 
-Salvar o token em variável:
-
-```bash
-TOKEN="COLE_O_TOKEN_AQUI"
-```
-
----
+## Entidades principais
 
 ## Users
 
-Status: consolidado.
+Representa usuários do sistema.
+
+Campos principais:
+
+- `id`
+- `name`
+- `email`
+- `password`
+- `is_active`
+- `deleted_at`
+- `created_at`
+- `updated_at`
 
 Endpoints:
 
@@ -254,698 +177,25 @@ PUT /users/:id
 DELETE /users/:id
 ```
 
-Observação:
-
-```text
-POST /users permanece público por enquanto.
-As demais rotas de users são protegidas por JWT.
-```
-
----
-
 ## Students
 
-Status: consolidado.
-
-Endpoints protegidos:
-
-```http
-POST /students
-GET /students
-GET /students/:id
-PUT /students/:id
-DELETE /students/:id
-```
-
----
-
-## Exercises
-
-Status: consolidado.
-
-Endpoints protegidos:
-
-```http
-POST /exercises
-GET /exercises
-GET /exercises/:id
-PUT /exercises/:id
-DELETE /exercises/:id
-```
-
-Regra importante:
-
-```text
-exercises é um catálogo global reutilizável.
-Um exercício pode aparecer em vários treinos.
-```
-
----
-
-## Workouts
-
-Status: consolidado.
-
-Endpoints protegidos:
-
-```http
-POST /workouts
-GET /workouts
-GET /workouts/:id
-PUT /workouts/:id
-DELETE /workouts/:id
-```
-
-Regra importante:
-
-```text
-Um aluno pode ter vários treinos.
-```
-
-Exemplo:
-
-```text
-Aluno Maria
-├── Treino A - Inferiores
-├── Treino B - Superiores
-└── Treino C - Full Body
-```
-
----
-
-## Workout Exercises
-
-Status: consolidado com criação, listagem, atualização e remoção de vínculos.
-
-A tabela `workout_exercises` representa o vínculo entre treinos e exercícios.
-
-Ela permite:
-
-```text
-Um treino ter vários exercícios.
-Um exercício ser reutilizado em vários treinos.
-```
+Representa alunos cadastrados no sistema.
 
 Campos principais:
 
-```text
-id
-workout_id
-exercise_id
-sets
-reps
-rest_time
-notes
-exercise_order
-is_active
-deleted_at
-created_at
-updated_at
-```
-
-Regra importante:
-
-```text
-workout_exercises altera apenas o vínculo entre treino e exercício.
-Não altera o treino em workouts.
-Não altera o exercício do catálogo em exercises.
-```
-
----
-
-### POST /workout-exercises
-
-Adiciona um exercício a um treino.
-
-```bash
-curl -i -X POST http://localhost:3000/workout-exercises \
--H "Content-Type: application/json" \
--H "Authorization: Bearer $TOKEN" \
--d '{
-  "workout_id": 1,
-  "exercise_id": 5,
-  "sets": 4,
-  "reps": 12,
-  "rest_time": 60,
-  "notes": "Controlar a execução",
-  "exercise_order": 1
-}'
-```
-
-Regras:
-
-- só adiciona se o workout estiver ativo
-- só adiciona se o exercise estiver ativo
-
-Exemplo de retorno:
-
-```json
-{
-  "message": "exercise added to workout",
-  "data": {
-    "id": 1,
-    "workout_id": 1,
-    "exercise_id": 5,
-    "sets": 4,
-    "reps": 12,
-    "rest_time": 60,
-    "notes": "Controlar a execução",
-    "exercise_order": 1
-  }
-}
-```
-
----
-
-### GET /workouts/:id/exercises
-
-Lista os exercícios ativos vinculados a um treino.
-
-```bash
-curl -i http://localhost:3000/workouts/1/exercises \
--H "Authorization: Bearer $TOKEN"
-```
-
-Exemplo de retorno:
-
-```json
-[
-  {
-    "id": 1,
-    "workout_id": 1,
-    "exercise_id": 5,
-    "exercise_name": "Supino reto",
-    "muscle_group": "Peitoral",
-    "equipment": "Barra",
-    "sets": 4,
-    "reps": 12,
-    "rest_time": 60,
-    "notes": "Controlar a execução",
-    "exercise_order": 1
-  }
-]
-```
-
-Observação:
-
-```text
-O campo id retornado é o id do vínculo em workout_exercises.
-Ele não é o id do exercício do catálogo.
-```
-
----
-
-### PUT /workout-exercises/:id
-
-Atualiza a configuração de um exercício dentro de um treino.
-
-```bash
-curl -i -X PUT http://localhost:3000/workout-exercises/1 \
--H "Content-Type: application/json" \
--H "Authorization: Bearer $TOKEN" \
--d '{
-  "sets": 5,
-  "reps": 10,
-  "rest_time": 90,
-  "notes": "Aumentar carga progressivamente",
-  "exercise_order": 2
-}'
-```
-
-Campos permitidos:
-
-```text
-sets
-reps
-rest_time
-notes
-exercise_order
-```
-
-Campos não permitidos neste endpoint:
-
-```text
-workout_id
-exercise_id
-is_active
-deleted_at
-created_at
-updated_at
-```
-
-Regra importante:
-
-```text
-Este endpoint atualiza apenas o vínculo em workout_exercises.
-Ele não troca o treino.
-Ele não troca o exercício do catálogo.
-```
-
-Exemplo de retorno:
-
-```json
-{
-  "message": "workout exercise updated",
-  "data": {
-    "id": 1,
-    "workout_id": 1,
-    "exercise_id": 5,
-    "sets": 5,
-    "reps": 10,
-    "rest_time": 90,
-    "notes": "Aumentar carga progressivamente",
-    "exercise_order": 2
-  }
-}
-```
-
-Validações:
-
-- body vazio retorna erro `400`
-- campos fora da lista permitida retornam erro `400`
-- vínculo inexistente retorna erro `404`
-- vínculo inativo não é atualizado
-
-Exemplo de body inválido:
-
-```json
-{}
-```
-
-Exemplo de campo não permitido:
-
-```json
-{
-  "workout_id": 99,
-  "sets": 4
-}
-```
-
----
-
-### DELETE /workout-exercises/:id
-
-Remove o vínculo entre treino e exercício com soft delete.
-
-```bash
-curl -i -X DELETE http://localhost:3000/workout-exercises/1 \
--H "Authorization: Bearer $TOKEN"
-```
-
-Regra:
-
-```text
-Não apaga o treino.
-Não apaga o exercício do catálogo.
-Apenas inativa o vínculo em workout_exercises.
-```
-
----
-
-## Testes manuais úteis
-
-### Testar PUT válido
-
-```bash
-curl -i -X PUT http://localhost:3000/workout-exercises/1 \
--H "Content-Type: application/json" \
--H "Authorization: Bearer $TOKEN" \
--d '{
-  "sets": 5,
-  "reps": 10,
-  "rest_time": 90,
-  "notes": "Aumentar carga progressivamente",
-  "exercise_order": 2
-}'
-```
-
-Esperado:
-
-```text
-HTTP/1.1 200 OK
-```
-
-### Testar body vazio
-
-```bash
-curl -i -X PUT http://localhost:3000/workout-exercises/1 \
--H "Content-Type: application/json" \
--H "Authorization: Bearer $TOKEN" \
--d '{}'
-```
-
-Esperado:
-
-```text
-HTTP/1.1 400 Bad Request
-```
-
-### Testar campo proibido
-
-```bash
-curl -i -X PUT http://localhost:3000/workout-exercises/1 \
--H "Content-Type: application/json" \
--H "Authorization: Bearer $TOKEN" \
--d '{
-  "workout_id": 99,
-  "sets": 4
-}'
-```
-
-Esperado:
-
-```text
-HTTP/1.1 400 Bad Request
-```
-
-### Testar id inexistente
-
-```bash
-curl -i -X PUT http://localhost:3000/workout-exercises/999 \
--H "Content-Type: application/json" \
--H "Authorization: Bearer $TOKEN" \
--d '{
-  "sets": 4
-}'
-```
-
-Esperado:
-
-```text
-HTTP/1.1 404 Not Found
-```
-
----
-
-## Status atual do projeto
-
-```text
-Users               ✅ Consolidado
-Students            ✅ Consolidado
-Exercises           ✅ Consolidado
-Workouts            ✅ Consolidado
-Workout Exercises   ✅ Consolidado com POST, GET, PUT e DELETE
-```
-
----
-
-## Próximas melhorias sugeridas
-
-- evitar duplicidade do mesmo exercício no mesmo treino
-- criar regra de reordenação de exercícios dentro do treino
-- adicionar migrations
-- adicionar seeds
-- implementar roles/permissões
-- documentar com Swagger/OpenAPI
-- adicionar testes automatizados com Jest/Supertest
-
----
-
-## Sugestão de commit da etapa atual
-
-```bash
-git add README.md src/controllers/workoutExercise.controller.js src/repositories/workoutExercise.repository.js src/routes/workoutExercise.routes.js src/schemas/workoutExercise.schema.js src/services/workoutExercise.service.js
-
-git commit -m "feat: add update workout exercise endpoint"
-```
-
----
-
-## Estado atual
-
-Entidades consolidadas:
-
-- `users`
-- `students`
-- `exercises`
-- `workouts`
-- `workout_exercises`
-
-Recursos implementados:
-
-- Estrutura em camadas
-- Repository Pattern
-- Middleware global de erros
-- Autenticação JWT
-- Validação com Zod
-- PostgreSQL via Docker
-- Soft delete
-- Rotas protegidas com token
-- Relacionamento entre treinos e exercícios
-
----
-
-## Arquitetura
-
-Fluxo padrão:
-
-```text
-Route
-↓
-Controller
-↓
-Service
-↓
-Repository
-↓
-Database
-```
-
-### Routes
-
-Responsável por mapear endpoints, aplicar middlewares e ligar a rota ao controller.
-
-### Controllers
-
-Responsável por `req`, `res`, status HTTP e `next(err)`.
-
-Não deve acessar banco diretamente nem conter SQL.
-
-### Services
-
-Responsável por regras de negócio, validações entre entidades e coordenação entre repositories.
-
-Não deve lidar diretamente com HTTP nem conter SQL.
-
-### Repositories
-
-Responsável por SQL, acesso ao banco e persistência de dados.
-
----
-
-## Estrutura de diretórios
-
-```text
-src/
-├── app.js
-├── server.js
-├── config/
-│   ├── database.js
-│   └── env.js
-├── controllers/
-│   ├── auth.controller.js
-│   ├── exercise.controller.js
-│   ├── health.controller.js
-│   ├── student.controller.js
-│   ├── user.controller.js
-│   ├── workout.controller.js
-│   └── workoutExercise.controller.js
-├── middlewares/
-│   ├── auth.middleware.js
-│   ├── error.middleware.js
-│   └── validation.middleware.js
-├── repositories/
-│   ├── exercise.repository.js
-│   ├── student.repository.js
-│   ├── user.repository.js
-│   ├── workout.repository.js
-│   └── workoutExercise.repository.js
-├── routes/
-│   ├── auth.routes.js
-│   ├── exercise.routes.js
-│   ├── health.routes.js
-│   ├── student.routes.js
-│   ├── user.routes.js
-│   ├── workout.routes.js
-│   └── workoutExercise.routes.js
-├── schemas/
-│   ├── exercise.schema.js
-│   ├── student.schema.js
-│   ├── user.schema.js
-│   ├── workout.schema.js
-│   └── workoutExercise.schema.js
-└── services/
-    ├── auth.service.js
-    ├── exercise.service.js
-    ├── student.service.js
-    ├── user.service.js
-    ├── workout.service.js
-    └── workoutExercise.service.js
-```
-
----
-
-## Tecnologias
-
-- Node.js
-- Express
-- PostgreSQL
-- Docker Compose
-- JWT
-- bcrypt
-- Zod
-- dotenv
-
----
-
-## Modelo de dados
-
-```text
-users
-students
-exercises
-workouts
-workout_exercises
-```
-
-Relacionamento principal:
-
-```text
-Aluno → vários treinos
-Treino → vários exercícios
-Exercício → reutilizável em vários treinos
-```
-
----
-
-## Padrão de nomenclatura
-
-### JavaScript
-
-Usar `camelCase` para funções e variáveis internas:
-
-```js
-createWorkout
-getWorkoutById
-addExerciseToWorkout
-getExercisesByWorkoutId
-deleteWorkoutExercise
-parsedWorkoutId
-parsedExerciseId
-```
-
-### Banco e JSON da API
-
-Usar `snake_case` para campos de banco e body da API:
-
-```text
-student_id
-workout_id
-exercise_id
-muscle_group
-rest_time
-exercise_order
-is_active
-deleted_at
-created_at
-updated_at
-```
-
----
-
-## Autenticação
-
-A API usa JWT.
-
-### Login
-
-```http
-POST /auth/login
-```
-
-Exemplo:
-
-```bash
-curl -i -X POST http://localhost:3000/auth/login \
--H "Content-Type: application/json" \
--d '{
-  "email": "admin@teste.com",
-  "password": "SUA_SENHA"
-}'
-```
-
-Salvar token:
-
-```bash
-TOKEN="COLE_O_TOKEN_AQUI"
-```
-
-Usar token:
-
-```bash
-curl -i http://localhost:3000/students \
--H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## Rotas públicas
-
-```http
-GET /health
-POST /auth/login
-POST /users
-```
-
-`POST /users` permanece público temporariamente. Futuramente poderá ser protegido com roles/permissões.
-
----
-
-## Rotas protegidas
-
-Exigem:
-
-```http
-Authorization: Bearer TOKEN
-```
-
----
-
-# Users
-
-Responsável pelos usuários que acessam o sistema.
-
-## Endpoints
-
-```http
-POST /users
-GET /users
-GET /users/:id
-PUT /users/:id
-DELETE /users/:id
-```
-
-## Status
-
-```text
-Users ✅ Consolidado
-```
-
-Recursos:
-
-- CRUD
-- Soft delete
-- Validação com Zod
-- bcrypt
-- JWT
-
----
-
-# Students
-
-Responsável pelos alunos.
-
-## Endpoints
+- `id`
+- `name`
+- `email`
+- `phone`
+- `height`
+- `weight_kg`
+- `sex`
+- `is_active`
+- `deleted_at`
+- `created_at`
+- `updated_at`
+
+Endpoints:
 
 ```http
 POST /students
@@ -955,40 +205,58 @@ PUT /students/:id
 DELETE /students/:id
 ```
 
-## Exemplo
+Regras principais:
 
-```bash
-curl -i -X POST http://localhost:3000/students \
--H "Content-Type: application/json" \
--H "Authorization: Bearer $TOKEN" \
--d '{
-  "name": "Maria Oliveira",
-  "email": "maria@email.com",
-  "phone": "21988887777",
-  "height": 1.68
-}'
-```
+- `GET /students` lista apenas alunos ativos.
+- `GET /students/:id` retorna apenas aluno ativo.
+- `PUT /students/:id` atualiza apenas campos permitidos.
+- `DELETE /students/:id` usa soft delete.
+- `weight_kg` é opcional e positivo.
+- `height` é opcional e positivo.
+- `sex` é opcional e validado por enum.
 
-## Status
+Valores aceitos para `sex`:
 
 ```text
-Students ✅ Consolidado
+male
+female
+other
+not_informed
 ```
 
-Recursos:
+Campos permitidos no `PUT /students/:id`:
 
-- CRUD completo
-- Soft delete
-- Validação com Zod
-- JWT
+- `name`
+- `email`
+- `phone`
+- `height`
+- `weight_kg`
+- `sex`
 
----
+Campos que não devem ser atualizados diretamente:
 
-# Exercises
+- `id`
+- `is_active`
+- `deleted_at`
+- `created_at`
+- `updated_at`
 
-Catálogo global de exercícios reutilizáveis.
+## Exercises
 
-## Endpoints
+Representa o catálogo reutilizável de exercícios.
+
+Campos principais:
+
+- `id`
+- `name`
+- `muscle_group`
+- `equipment`
+- `is_active`
+- `deleted_at`
+- `created_at`
+- `updated_at`
+
+Endpoints:
 
 ```http
 POST /exercises
@@ -998,41 +266,32 @@ PUT /exercises/:id
 DELETE /exercises/:id
 ```
 
-## Exemplo de criação
+O catálogo permite cadastrar exercícios como:
 
-```bash
-curl -i -X POST http://localhost:3000/exercises \
--H "Content-Type: application/json" \
--H "Authorization: Bearer $TOKEN" \
--d '{
-  "name": "Supino reto",
-  "muscle_group": "Peitoral",
-  "equipment": "Barra"
-}'
-```
+- supino reto;
+- puxada frontal;
+- flexão de braços;
+- alongamento de quadril;
+- alongamento de pernas.
 
-## Status
+Esses exercícios podem ser reutilizados em vários treinos.
 
-```text
-Exercises ✅ Consolidado
-```
+## Workouts
 
-Recursos:
+Representa treinos vinculados a alunos.
 
-- CRUD completo
-- Soft delete
-- Validação com Zod
-- JWT
+Campos principais:
 
----
+- `id`
+- `student_id`
+- `name`
+- `description`
+- `is_active`
+- `deleted_at`
+- `created_at`
+- `updated_at`
 
-# Workouts
-
-Treinos associados aos alunos.
-
-Um aluno pode ter vários treinos.
-
-## Endpoints
+Endpoints:
 
 ```http
 POST /workouts
@@ -1042,239 +301,481 @@ PUT /workouts/:id
 DELETE /workouts/:id
 ```
 
-## Exemplo
+Regras principais:
 
-```bash
-curl -i -X POST http://localhost:3000/workouts \
--H "Content-Type: application/json" \
--H "Authorization: Bearer $TOKEN" \
--d '{
-  "name": "Treino A - Inferiores",
-  "description": "Treino focado em pernas e glúteos",
-  "student_id": 3
-}'
-```
+- um treino pertence a um aluno;
+- apenas treinos ativos são retornados nas consultas principais;
+- exclusão usa soft delete.
 
-## Regra
+## Workout Exercises
 
-Antes de criar um treino, a API valida se o `student_id` existe e está ativo.
+Representa o vínculo entre um treino e um exercício do catálogo.
 
-## Status
+Essa tabela resolve a relação entre `workouts` e `exercises`.
 
-```text
-Workouts ✅ Consolidado
-```
+Um treino pode ter vários exercícios, e um exercício do catálogo pode aparecer em vários treinos.
 
-Recursos:
+Campos principais:
 
-- CRUD completo
-- Soft delete
-- Validação com Zod
-- JWT
-- Validação de aluno ativo
+- `id`
+- `workout_id`
+- `exercise_id`
+- `sets`
+- `reps`
+- `load_kg`
+- `rest_time`
+- `notes`
+- `exercise_order`
+- `is_active`
+- `deleted_at`
+- `created_at`
+- `updated_at`
 
----
-
-# Workout Exercises
-
-Entidade intermediária entre `workouts` e `exercises`.
-
-Permite:
-
-```text
-um treino ter vários exercícios
-um exercício ser reutilizado em vários treinos
-```
-
-## Estrutura da tabela
-
-```text
-workout_exercises
-├── id
-├── workout_id
-├── exercise_id
-├── sets
-├── reps
-├── rest_time
-├── notes
-├── exercise_order
-├── is_active
-├── deleted_at
-├── created_at
-└── updated_at
-```
-
-## Endpoints
+Endpoints:
 
 ```http
 POST /workout-exercises
 GET /workouts/:id/exercises
+PUT /workout-exercises/:id
 DELETE /workout-exercises/:id
+```
+
+Regras principais:
+
+- `POST /workout-exercises` adiciona um exercício a um treino.
+- O service valida se o treino existe e está ativo.
+- O service valida se o exercício existe e está ativo.
+- Não pode existir vínculo ativo duplicado com o mesmo `workout_id` e `exercise_id`.
+- Duplicidade ativa retorna `409 Conflict`.
+- Histórico inativo duplicado é permitido por causa do soft delete.
+- `GET /workouts/:id/exercises` lista apenas vínculos ativos.
+- No GET, o campo `id` retornado é o id do vínculo em `workout_exercises`, não o id do exercício do catálogo.
+- `PUT /workout-exercises/:id` atualiza apenas dados do vínculo.
+- `DELETE /workout-exercises/:id` remove apenas o vínculo com soft delete.
+
+Campos permitidos no `PUT /workout-exercises/:id`:
+
+- `sets`
+- `reps`
+- `load_kg`
+- `rest_time`
+- `notes`
+- `exercise_order`
+
+Campos que não podem ser alterados no PUT:
+
+- `workout_id`
+- `exercise_id`
+- dados do treino;
+- dados do exercício do catálogo.
+
+## Regras de carga
+
+O campo `load_kg` representa a carga total prescrita ou utilizada no exercício.
+
+Exemplo:
+
+```json
+{
+    "load_kg": 45
+}
+```
+
+Observações específicas, como “20 kg de cada lado”, devem ser registradas no campo `notes`.
+
+Exemplo:
+
+```json
+{
+    "load_kg": 40,
+    "notes": "20 kg de cada lado"
+}
+```
+
+Uma modelagem mais detalhada de carga pode ser criada futuramente, considerando:
+
+- carga por lado;
+- halteres;
+- máquinas;
+- peso corporal;
+- carga total;
+- unidade de medida.
+
+## Duplicidade ativa em workout_exercises
+
+A API bloqueia duplicidade ativa em `workout_exercises`.
+
+Não pode existir mais de um vínculo ativo com:
+
+- mesmo `workout_id`;
+- mesmo `exercise_id`;
+- `is_active = true`.
+
+Essa regra é aplicada em duas camadas:
+
+```text
+Service + Database
+```
+
+No banco, existe um índice único parcial:
+
+```sql
+CREATE UNIQUE INDEX unique_active_workout_exercise
+ON public.workout_exercises USING btree (workout_id, exercise_id)
+WHERE (is_active = true);
+```
+
+Isso impede duplicidade ativa e permite manter histórico inativo.
+
+## Constraints no banco
+
+Além das validações com Zod, o banco também possui constraints para reforçar a integridade dos dados.
+
+## Constraints em students
+
+Constraints implementadas:
+
+- `students_sex_check`
+- `students_height_check`
+- `students_weight_kg_check`
+
+Regras:
+
+- `sex` deve ser `NULL` ou um dos valores permitidos;
+- `height` deve ser `NULL` ou maior que zero;
+- `weight_kg` deve ser `NULL` ou maior que zero.
+
+## Constraints em workout_exercises
+
+Constraints implementadas:
+
+- `workout_exercises_sets_check`
+- `workout_exercises_reps_check`
+- `workout_exercises_load_kg_check`
+- `workout_exercises_rest_time_check`
+- `workout_exercises_exercise_order_check`
+
+Regras:
+
+- `sets` deve ser `NULL` ou maior que zero;
+- `reps` deve ser `NULL` ou maior que zero;
+- `load_kg` deve ser `NULL` ou maior ou igual a zero;
+- `rest_time` deve ser `NULL` ou maior ou igual a zero;
+- `exercise_order` deve ser `NULL` ou maior que zero.
+
+## Observação sobre campos NUMERIC
+
+Campos PostgreSQL do tipo `NUMERIC` podem ser retornados como string pela API.
+
+Exemplo:
+
+```json
+{
+    "weight_kg": "80.20",
+    "load_kg": "45.00"
+}
+```
+
+Esse comportamento é esperado no driver PostgreSQL.
+
+## Testes automatizados
+
+O projeto possui uma primeira camada de testes automatizados com Jest.
+
+Os testes atuais cobrem validações dos schemas Zod, garantindo que regras importantes sejam verificadas automaticamente antes dos dados chegarem aos controllers, services, repositories e banco de dados.
+
+## Como executar os testes
+
+```bash
+npm test
+```
+
+O script executado é:
+
+```bash
+jest --runInBand
+```
+
+## Cobertura atual dos testes
+
+Arquivos de teste:
+
+```text
+tests/student.schema.test.js
+tests/workoutExercise.schema.test.js
+```
+
+## Students
+
+O arquivo `tests/student.schema.test.js` valida:
+
+- criação de aluno com dados válidos;
+- rejeição de `sex` inválido;
+- rejeição de body vazio no update;
+- rejeição de campos desconhecidos, como `is_active`;
+- rejeição de `weight_kg` negativo;
+- rejeição de `height` negativo.
+
+Total:
+
+```text
+6 testes
+```
+
+## Workout Exercises
+
+O arquivo `tests/workoutExercise.schema.test.js` valida:
+
+- criação de vínculo com dados válidos;
+- rejeição de `sets = 0`;
+- rejeição de `reps = 0`;
+- aceitação de `load_kg = 0`;
+- rejeição de `load_kg` negativo;
+- rejeição de `rest_time` negativo;
+- rejeição de `exercise_order = 0`;
+- rejeição de body vazio no update.
+
+Total:
+
+```text
+8 testes
+```
+
+## Resultado atual
+
+```text
+Test Suites: 2 passed, 2 total
+Tests:       14 passed, 14 total
+```
+
+Os testes atuais não dependem do PostgreSQL. Eles validam diretamente os schemas Zod.
+
+O Supertest está instalado como dependência de desenvolvimento para futura criação de testes de endpoints.
+
+## Instalação e execução
+
+Instale as dependências:
+
+```bash
+npm install
+```
+
+Execute o projeto em modo desenvolvimento:
+
+```bash
+npm run dev
+```
+
+Execute os testes automatizados:
+
+```bash
+npm test
+```
+
+## Variáveis de ambiente
+
+O projeto utiliza variáveis de ambiente para conexão com banco de dados, autenticação e porta da aplicação.
+
+As variáveis devem ser configuradas em arquivo `.env`, conforme leitura feita nos arquivos de configuração do projeto.
+
+Exemplo de informações necessárias:
+
+```text
+PORT
+DATABASE_HOST
+DATABASE_PORT
+DATABASE_USER
+DATABASE_PASSWORD
+DATABASE_NAME
+JWT_SECRET
+```
+
+Ajuste os nomes conforme a configuração existente em `src/config/env.js`.
+
+## Exemplos de uso com curl
+
+## Login
+
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "usuario@email.com",
+    "password": "senha"
+  }'
+```
+
+## Listar alunos
+
+```bash
+curl http://localhost:3000/students \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+## Criar aluno
+
+```bash
+curl -X POST http://localhost:3000/students \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -d '{
+    "name": "Aluno Teste",
+    "email": "aluno@teste.com",
+    "phone": "21999999999",
+    "height": 1.75,
+    "weight_kg": 80.5,
+    "sex": "male"
+  }'
+```
+
+## Criar exercício
+
+```bash
+curl -X POST http://localhost:3000/exercises \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -d '{
+    "name": "Supino reto",
+    "muscle_group": "Peitoral",
+    "equipment": "Barra"
+  }'
+```
+
+## Criar treino
+
+```bash
+curl -X POST http://localhost:3000/workouts \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -d '{
+    "student_id": 1,
+    "name": "Treino A",
+    "description": "Treino de membros superiores"
+  }'
 ```
 
 ## Adicionar exercício ao treino
 
 ```bash
-curl -i -X POST http://localhost:3000/workout-exercises \
--H "Content-Type: application/json" \
--H "Authorization: Bearer $TOKEN" \
--d '{
-  "workout_id": 1,
-  "exercise_id": 5,
-  "sets": 4,
-  "reps": 12,
-  "rest_time": 60,
-  "notes": "Controlar a execução",
-  "exercise_order": 1
-}'
+curl -X POST http://localhost:3000/workout-exercises \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -d '{
+    "workout_id": 1,
+    "exercise_id": 1,
+    "sets": 3,
+    "reps": 12,
+    "load_kg": 45,
+    "rest_time": 60,
+    "notes": "Carga moderada",
+    "exercise_order": 1
+  }'
 ```
 
 ## Listar exercícios de um treino
 
 ```bash
-curl -i http://localhost:3000/workouts/1/exercises \
--H "Authorization: Bearer $TOKEN"
+curl http://localhost:3000/workouts/1/exercises \
+  -H "Authorization: Bearer SEU_TOKEN"
 ```
 
-Resposta esperada:
+## Atualizar vínculo entre treino e exercício
 
-```json
-[
-  {
-    "id": 1,
-    "workout_id": 1,
-    "exercise_id": 5,
-    "exercise_name": "Supino reto",
-    "muscle_group": "Peitoral",
-    "equipment": "Barra",
+```bash
+curl -X PUT http://localhost:3000/workout-exercises/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -d '{
     "sets": 4,
-    "reps": 12,
-    "rest_time": 60,
-    "notes": "Controlar a execução",
-    "exercise_order": 1
-  }
-]
+    "reps": 10,
+    "load_kg": 50,
+    "rest_time": 90,
+    "notes": "Aumentar carga progressivamente",
+    "exercise_order": 2
+  }'
 ```
 
 ## Remover exercício do treino
 
 ```bash
-curl -i -X DELETE http://localhost:3000/workout-exercises/1 \
--H "Authorization: Bearer $TOKEN"
+curl -X DELETE http://localhost:3000/workout-exercises/1 \
+  -H "Authorization: Bearer SEU_TOKEN"
 ```
 
-Esse endpoint remove apenas o vínculo entre treino e exercício.
+## Estrutura geral do projeto
 
-Não apaga:
-
-- o treino
-- o exercício do catálogo
-
-Apenas marca o vínculo como inativo:
+Estrutura resumida:
 
 ```text
-is_active = false
-deleted_at = NOW()
+src/
+  config/
+  controllers/
+  middlewares/
+  repositories/
+  routes/
+  schemas/
+  services/
+  app.js
+  server.js
+
+database/
+  schema/
+    schema.sql
+
+tests/
+  student.schema.test.js
+  workoutExercise.schema.test.js
 ```
 
-## Regras implementadas
+## Qualidade e validações antes de commit
 
-- Só adiciona exercício a treino ativo.
-- Só adiciona exercício ativo.
-- Remove vínculo com soft delete.
-- Lista apenas vínculos ativos.
-- Exercícios inativos não aparecem na listagem do treino.
+Antes de realizar commits técnicos, recomenda-se executar:
 
-## Status
-
-```text
-Workout Exercises ✅ Primeira fase implementada
+```bash
+git status
+git diff --check
+git diff --stat
+npm test
 ```
 
-Recursos:
+Para arquivos JavaScript alterados, recomenda-se também:
 
-- POST
-- GET por workout
-- DELETE
-- Soft delete
-- Validação com Zod
-- Validação de treino ativo
-- Validação de exercício ativo
-- JWT
-
----
-
-## Soft delete
-
-Entidades com soft delete:
-
-- users
-- students
-- exercises
-- workouts
-- workout_exercises
-
-Padrão:
-
-```text
-is_active = false
-deleted_at = NOW()
+```bash
+node --check caminho/do/arquivo.js
 ```
 
----
+Para validar todos os arquivos JavaScript:
 
-## Status geral
-
-```text
-Users               ✅ Consolidado
-Students            ✅ Consolidado
-Exercises           ✅ Consolidado
-Workouts            ✅ Consolidado
-Workout Exercises   ✅ Primeira fase implementada
+```bash
+find src tests -name "*.js" -print -exec node --check {} \;
 ```
 
----
+## Status atual
 
-## Próximos passos
+Status técnico atual:
 
-### Workout Exercises
+- usuários consolidados;
+- autenticação JWT implementada;
+- alunos consolidados;
+- exercícios consolidados;
+- treinos consolidados;
+- vínculos entre treinos e exercícios consolidados;
+- soft delete aplicado;
+- validações com Zod implementadas;
+- constraints de banco adicionadas;
+- schema versionado em `database/schema/schema.sql`;
+- testes automatizados de schemas adicionados com Jest.
 
-- `PUT /workout-exercises/:id`
-- Atualizar `sets`, `reps`, `rest_time`, `notes`, `exercise_order`
-- Evitar duplicidade do mesmo exercício no mesmo treino
-- Reordenar exercícios dentro do treino
+## Melhorias futuras
 
-### Banco de dados
+Possíveis melhorias futuras:
 
-- migrations
-- seeds
-- versionamento formal do schema
-
-### Segurança
-
-- roles/permissões
-- admin vs usuário comum
-- refresh token
-
-### Documentação
-
-- Swagger/OpenAPI
-
-### Testes
-
-- Jest
-- Supertest
-
----
-
-## Diagnóstico
-
-O projeto já representa uma aplicação backend estruturada para gerenciamento de treinos.
-
-A modelagem atual permite:
-
-```text
-Aluno → vários treinos
-Treino → vários exercícios
-Exercício → reutilizável em vários treinos
-```
+- ampliar testes automatizados para endpoints com Supertest;
+- criar testes de services e repositories;
+- implementar migrations;
+- criar histórico corporal com `student_body_metrics`;
+- implementar clonagem de treinos;
+- padronizar a ordem dos middlewares nas rotas;
+- revisar e expandir documentação de deploy;
+- criar seed de dados para ambiente de desenvolvimento;
+- adicionar pipeline de CI para executar `npm test` automaticamente.

@@ -1,26 +1,92 @@
 const pool = require('../config/database')
 
 async function addExerciseToWorkout(data) {
-    const {
-        workout_id,
-        exercise_id,
-        sets,
-        reps,
-        load_kg,
-        rest_time,
-        notes,
-        exercise_order
-    } = data
+    const { workout_id, exercise_id, sets, reps, load_kg, rest_time, notes, exercise_order } = data
 
-    const result = await pool.query(
-        `INSERT INTO workout_exercises
-        (workout_id, exercise_id, sets, reps, load_kg, rest_time, notes, exercise_order)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING id, workout_id, exercise_id, sets, reps, load_kg, rest_time, notes, exercise_order, is_active`,
-        [workout_id, exercise_id, sets, reps, load_kg, rest_time, notes, exercise_order]
-    )
-    return result.rows[0]
+    const client = await pool.connect()
 
+    try {
+        await client.query('BEGIN')
+
+        await client.query(
+            `WITH ordered AS(
+                SELECT
+                    id,
+                    ROW_NUMBER() OVER(
+                        ORDER BY COALESCE(exercise_order,999999),id
+                    ) AS new_order
+                FROM workout_exercises
+                WHERE workout_id = $1
+                AND is_active = true
+            )
+            UPDATE workout_exercises we
+            SET exercise_order = ordered.new_order,
+                updated_at = NOW()
+            FROM ordered
+            WHERE we.id = ordered.id
+            AND we.exercise_order IS DISTINCT FROM ordered.new_order`,
+            [workout_id]
+        )
+
+        const maxOrderResult = await client.query(
+            `SELECT COALESCE(MAX(exercise_order), 0) AS max_order
+            FROM workout_exercises
+            WHERE workout_id = $1
+            AND is_active = true`,
+            [workout_id]
+        )
+
+        const maxOrder = Number(maxOrderResult.rows[0]?.max_order ?? 0)
+        const requestedOrder = Number(exercise_order)
+
+        let targetOrder = maxOrder + 1
+
+        if (Number.isInteger(requestedOrder) && requestedOrder > 0) {
+            targetOrder = requestedOrder
+        }
+
+        if (targetOrder > maxOrder + 1) {
+            targetOrder = maxOrder + 1
+        }
+
+        await client.query(
+            `UPDATE workout_exercises
+            SET exercise_order = exercise_order + 1,
+                updated_at = NOW()
+            WHERE workout_id = $1
+            AND is_active = true
+            AND exercise_order >= $2`,
+            [workout_id, targetOrder]
+        )
+
+        const result = await client.query(
+            `INSERT INTO workout_exercises
+            (workout_id, exercise_id, sets, reps, load_kg, rest_time, notes, exercise_order)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING
+                id,
+                workout_id,
+                exercise_id,
+                sets,
+                reps,
+                load_kg,
+                rest_time,
+                notes,
+                exercise_order,
+                is_active`,
+            [workout_id, exercise_id, sets, reps, load_kg, rest_time, notes, targetOrder]
+        )
+
+        await client.query('COMMIT')
+
+        return result.rows[0]
+    } catch (err) {
+        await client.query('ROLLBACK')
+        console.error('Erro ao adicionar exercício ao treino', err)
+        throw new Error('Erro ao adicionar exercício ao treino no banco de dados')
+    } finally {
+        client.release()
+    }
 }
 
 async function getExercisesByWorkoutId(workoutId) {
@@ -51,35 +117,32 @@ async function getExercisesByWorkoutId(workoutId) {
 
 async function deleteWorkoutExercise(id) {
     try {
-
         const result = await pool.query(
             `UPDATE workout_exercises
             SET is_active = false,
                 deleted_at = NOW(),
                 updated_at = NOW()
             WHERE id = $1 AND is_active = true
-            RETURNING id, workout_id, exercise_id, deleted_at` ,
-            [id])
+            RETURNING id, workout_id, exercise_id, deleted_at`,
+            [id]
+        )
 
         if (result.rows.length === 0) {
             return null
         }
         return result.rows[0] || null
     } catch (err) {
-
-        console.error('Erro ao remover exercício do treino', err);
-        throw new Error('Erro ao desativar vínculo treino-exercício');
-
+        console.error('Erro ao remover exercício do treino', err)
+        throw new Error('Erro ao desativar vínculo treino-exercício')
     }
-
 }
 
 async function updateWorkoutExercise(id, data) {
-
     const { sets, reps, load_kg, rest_time, notes, exercise_order } = data
 
     try {
-        const result = await pool.query(`
+        const result = await pool.query(
+            `
         UPDATE workout_exercises
         SET
             sets = COALESCE($1, sets),
@@ -105,13 +168,10 @@ async function updateWorkoutExercise(id, data) {
         )
 
         return result.rows[0] || null
-
-
     } catch (err) {
         console.error('Erro ao atualizar exercício do treino', err)
         throw new Error('Erro ao atualizar exercicio do treino no banco de dados')
     }
-
 }
 
 async function findActiveWorkoutExercise(workoutId, exerciseId) {
@@ -126,9 +186,6 @@ async function findActiveWorkoutExercise(workoutId, exerciseId) {
     )
     return result.rows[0] || null
 }
-
-
-
 
 module.exports = {
     addExerciseToWorkout,

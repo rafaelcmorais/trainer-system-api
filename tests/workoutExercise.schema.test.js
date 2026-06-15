@@ -70,4 +70,12 @@ describe('workout exercise schemas should accept valid data', () => {
         expect(result.success).toBe(false)
         expect(result.error.issues[0].message).toBe('At least one field must be provided')
     })
+
+    test('updateWorkoutExerciseSchema should reject exercise_order update', () => {
+        const result = updateWorkoutExerciseSchema.safeParse({
+            exercise_order: 1
+        })
+
+        expect(result.success).toBe(false)
+    })
 })

@@ -9,11 +9,11 @@ async function addExerciseToWorkout(data) {
         await client.query('BEGIN')
 
         await client.query(
-            `WITH ordered AS(
+            `WITH ordered AS (
                 SELECT
                     id,
-                    ROW_NUMBER() OVER(
-                        ORDER BY COALESCE(exercise_order,999999),id
+                    ROW_NUMBER() OVER (
+                        ORDER BY COALESCE(exercise_order,999999), id
                     ) AS new_order
                 FROM workout_exercises
                 WHERE workout_id = $1
@@ -138,7 +138,7 @@ async function deleteWorkoutExercise(id) {
 }
 
 async function updateWorkoutExercise(id, data) {
-    const { sets, reps, load_kg, rest_time, notes, exercise_order } = data
+    const { sets, reps, load_kg, rest_time, notes } = data
 
     try {
         const result = await pool.query(
@@ -150,9 +150,8 @@ async function updateWorkoutExercise(id, data) {
             load_kg = COALESCE($3, load_kg),
             rest_time = COALESCE($4, rest_time),
             notes = COALESCE($5, notes),
-            exercise_order = COALESCE($6, exercise_order),
             updated_at = NOW()
-            WHERE id = $7
+            WHERE id = $6
             AND is_active = true
             RETURNING
                 id,

@@ -291,6 +291,11 @@ echo "ORDER OK: Remada, Supino, Puxada"
 
 
 echo ""
+echo "===== GET EXERCISES FROM NONEXISTENT WORKOUT ====="
+INVALID_WORKOUT_ID=$((WORKOUT_ID + 999999))
+request "GET" "$API_URL/workouts/$INVALID_WORKOUT_ID/exercises" "404" "" "$TOKEN"
+
+echo ""
 echo "===== BLOCK exercise_order ON PUT ====="
 
 BLOCK_BODY=$(cat <<JSON

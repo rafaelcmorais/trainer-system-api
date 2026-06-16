@@ -69,6 +69,10 @@ echo "===== HEALTH ====="
 request "GET" "$API_URL/health" "200"
 
 echo ""
+echo "===== HEALTH DB ====="
+request "GET" "$API_URL/health/db" "200"
+
+echo ""
 echo "===== CREATE USER ====="
 USER_EMAIL="smoke_${UNIQUE}@email.com"
 

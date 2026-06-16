@@ -161,9 +161,8 @@ async function updateWorkoutExercise(id, data) {
                 reps,
                 load_kg,
                 rest_time,
-                notes,
-                exercise_order`,
-            [sets, reps, load_kg, rest_time, notes, exercise_order, id]
+                notes`,
+            [sets, reps, load_kg, rest_time, notes, id]
         )
 
         return result.rows[0] || null

@@ -4,6 +4,7 @@ set -e
 
 API_URL="${API_URL:-http://localhost:3000}"
 UNIQUE="$(date +%s)"
+RESPONSE=""
 
 json_get() {
   node -e '
@@ -28,35 +29,74 @@ json_get() {
   ' "$1"
 }
 
+request() {
+  local method="$1"
+  local url="$2"
+  local expected_status="$3"
+  local body="${4:-}"
+  local token="${5:-}"
+  local tmp_file
+  local status
+
+  tmp_file="$(mktemp)"
+
+  local curl_args=(-s -o "$tmp_file" -w "%{http_code}" -X "$method" "$url")
+
+  if [ -n "$token" ]; then
+    curl_args+=(-H "Authorization: Bearer $token")
+  fi
+
+  if [ -n "$body" ]; then
+    curl_args+=(-H "Content-Type: application/json" -d "$body")
+  fi
+
+  status="$(curl "${curl_args[@]}")"
+  RESPONSE="$(cat "$tmp_file")"
+  rm -f "$tmp_file"
+
+  echo "$RESPONSE"
+
+  if [ "$status" != "$expected_status" ]; then
+    echo ""
+    echo "ERRO: $method $url retornou HTTP $status, esperado HTTP $expected_status"
+    exit 1
+  fi
+
+  echo "STATUS OK: $status"
+}
+
 echo "===== HEALTH ====="
-curl -i "$API_URL/health"
+request "GET" "$API_URL/health" "200"
 
 echo ""
 echo "===== CREATE USER ====="
 USER_EMAIL="smoke_${UNIQUE}@email.com"
 
-USER_RESPONSE=$(curl -s -X POST "$API_URL/users" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"name\": \"Smoke Test\",
-    \"email\": \"$USER_EMAIL\",
-    \"password\": \"123456\"
-  }")
+USER_BODY=$(cat <<JSON
+{
+  "name": "Smoke Test",
+  "email": "$USER_EMAIL",
+  "password": "123456"
+}
+JSON
+)
 
-echo "$USER_RESPONSE"
+request "POST" "$API_URL/users" "201" "$USER_BODY"
 
 echo ""
 echo "===== LOGIN ====="
-LOGIN_RESPONSE=$(curl -s -X POST "$API_URL/auth/login" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"email\": \"$USER_EMAIL\",
-    \"password\": \"123456\"
-  }")
 
-echo "$LOGIN_RESPONSE"
+LOGIN_BODY=$(cat <<JSON
+{
+  "email": "$USER_EMAIL",
+  "password": "123456"
+}
+JSON
+)
 
-TOKEN=$(echo "$LOGIN_RESPONSE" | json_get "token")
+request "POST" "$API_URL/auth/login" "200" "$LOGIN_BODY"
+
+TOKEN=$(echo "$RESPONSE" | json_get "token")
 
 if [ -z "$TOKEN" ]; then
   echo "ERRO: token vazio"
@@ -68,21 +108,22 @@ echo "TOKEN OK"
 
 echo ""
 echo "===== CREATE STUDENT ====="
-STUDENT_RESPONSE=$(curl -s -X POST "$API_URL/students" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d "{
-    \"name\": \"Aluno Smoke $UNIQUE\",
-    \"email\": \"aluno_smoke_${UNIQUE}@email.com\",
-    \"phone\": \"21999999999\",
-    \"height\": 1.75,
-    \"weight_kg\": 80.50,
-    \"sex\": \"male\"
-  }")
 
-echo "$STUDENT_RESPONSE"
+STUDENT_BODY=$(cat <<JSON
+{
+  "name": "Aluno Smoke $UNIQUE",
+  "email": "aluno_smoke_${UNIQUE}@email.com",
+  "phone": "21999999999",
+  "height": 1.75,
+  "weight_kg": 80.50,
+  "sex": "male"
+}
+JSON
+)
 
-STUDENT_ID=$(echo "$STUDENT_RESPONSE" | json_get "data.id")
+request "POST" "$API_URL/students" "201" "$STUDENT_BODY" "$TOKEN"
+
+STUDENT_ID=$(echo "$RESPONSE" | json_get "data.id")
 
 if [ -z "$STUDENT_ID" ]; then
   echo "ERRO: student id vazio"
@@ -95,36 +136,41 @@ echo "STUDENT_ID=$STUDENT_ID"
 echo ""
 echo "===== CREATE EXERCISES ====="
 
-EXERCISE_RESPONSE_1=$(curl -s -X POST "$API_URL/exercises" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d "{
-    \"name\": \"Supino Smoke $UNIQUE\",
-    \"muscle_group\": \"Peitoral\",
-    \"equipment\": \"Barra\"
-  }")
+EXERCISE_BODY_1=$(cat <<JSON
+{
+  "name": "Supino Smoke $UNIQUE",
+  "muscle_group": "Peitoral",
+  "equipment": "Barra"
+}
+JSON
+)
 
-EXERCISE_RESPONSE_2=$(curl -s -X POST "$API_URL/exercises" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d "{
-    \"name\": \"Puxada Smoke $UNIQUE\",
-    \"muscle_group\": \"Costas\",
-    \"equipment\": \"Pulley\"
-  }")
+request "POST" "$API_URL/exercises" "201" "$EXERCISE_BODY_1" "$TOKEN"
+EXERCISE_ID_1=$(echo "$RESPONSE" | json_get "data.id")
 
-EXERCISE_RESPONSE_3=$(curl -s -X POST "$API_URL/exercises" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d "{
-    \"name\": \"Remada Smoke $UNIQUE\",
-    \"muscle_group\": \"Costas\",
-    \"equipment\": \"Maquina\"
-  }")
+EXERCISE_BODY_2=$(cat <<JSON
+{
+  "name": "Puxada Smoke $UNIQUE",
+  "muscle_group": "Costas",
+  "equipment": "Pulley"
+}
+JSON
+)
 
-EXERCISE_ID_1=$(echo "$EXERCISE_RESPONSE_1" | json_get "data.id")
-EXERCISE_ID_2=$(echo "$EXERCISE_RESPONSE_2" | json_get "data.id")
-EXERCISE_ID_3=$(echo "$EXERCISE_RESPONSE_3" | json_get "data.id")
+request "POST" "$API_URL/exercises" "201" "$EXERCISE_BODY_2" "$TOKEN"
+EXERCISE_ID_2=$(echo "$RESPONSE" | json_get "data.id")
+
+EXERCISE_BODY_3=$(cat <<JSON
+{
+  "name": "Remada Smoke $UNIQUE",
+  "muscle_group": "Costas",
+  "equipment": "Maquina"
+}
+JSON
+)
+
+request "POST" "$API_URL/exercises" "201" "$EXERCISE_BODY_3" "$TOKEN"
+EXERCISE_ID_3=$(echo "$RESPONSE" | json_get "data.id")
 
 echo "EXERCISE_ID_1=$EXERCISE_ID_1"
 echo "EXERCISE_ID_2=$EXERCISE_ID_2"
@@ -137,18 +183,19 @@ fi
 
 echo ""
 echo "===== CREATE WORKOUT ====="
-WORKOUT_RESPONSE=$(curl -s -X POST "$API_URL/workouts" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d "{
-    \"student_id\": $STUDENT_ID,
-    \"name\": \"Treino Smoke $UNIQUE\",
-    \"description\": \"Smoke test final da API\"
-  }")
 
-echo "$WORKOUT_RESPONSE"
+WORKOUT_BODY=$(cat <<JSON
+{
+  "student_id": $STUDENT_ID,
+  "name": "Treino Smoke $UNIQUE",
+  "description": "Smoke test final da API"
+}
+JSON
+)
 
-WORKOUT_ID=$(echo "$WORKOUT_RESPONSE" | json_get "data.id")
+request "POST" "$API_URL/workouts" "201" "$WORKOUT_BODY" "$TOKEN"
+
+WORKOUT_ID=$(echo "$RESPONSE" | json_get "data.id")
 
 if [ -z "$WORKOUT_ID" ]; then
   echo "ERRO: workout id vazio"
@@ -161,69 +208,68 @@ echo "WORKOUT_ID=$WORKOUT_ID"
 echo ""
 echo "===== ADD WORKOUT EXERCISES ====="
 
-curl -s -X POST "$API_URL/workout-exercises" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d "{
-    \"workout_id\": $WORKOUT_ID,
-    \"exercise_id\": $EXERCISE_ID_1,
-    \"sets\": 4,
-    \"reps\": 10,
-    \"load_kg\": 40,
-    \"rest_time\": 90,
-    \"notes\": \"Primeiro exercicio\",
-    \"exercise_order\": 1
-  }"
+WORKOUT_EXERCISE_BODY_1=$(cat <<JSON
+{
+  "workout_id": $WORKOUT_ID,
+  "exercise_id": $EXERCISE_ID_1,
+  "sets": 4,
+  "reps": 10,
+  "load_kg": 40,
+  "rest_time": 90,
+  "notes": "Primeiro exercicio",
+  "exercise_order": 1
+}
+JSON
+)
 
-echo ""
+request "POST" "$API_URL/workout-exercises" "201" "$WORKOUT_EXERCISE_BODY_1" "$TOKEN"
 
-curl -s -X POST "$API_URL/workout-exercises" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d "{
-    \"workout_id\": $WORKOUT_ID,
-    \"exercise_id\": $EXERCISE_ID_2,
-    \"sets\": 3,
-    \"reps\": 12,
-    \"load_kg\": 45,
-    \"rest_time\": 60,
-    \"notes\": \"Sem ordem deve ir para o final\"
-  }"
+WORKOUT_EXERCISE_BODY_2=$(cat <<JSON
+{
+  "workout_id": $WORKOUT_ID,
+  "exercise_id": $EXERCISE_ID_2,
+  "sets": 3,
+  "reps": 12,
+  "load_kg": 45,
+  "rest_time": 60,
+  "notes": "Sem ordem deve ir para o final"
+}
+JSON
+)
 
-echo ""
+request "POST" "$API_URL/workout-exercises" "201" "$WORKOUT_EXERCISE_BODY_2" "$TOKEN"
 
-curl -s -X POST "$API_URL/workout-exercises" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d "{
-    \"workout_id\": $WORKOUT_ID,
-    \"exercise_id\": $EXERCISE_ID_3,
-    \"sets\": 3,
-    \"reps\": 12,
-    \"load_kg\": 35,
-    \"rest_time\": 60,
-    \"notes\": \"Inserido na posicao 1\",
-    \"exercise_order\": 1
-  }"
+WORKOUT_EXERCISE_BODY_3=$(cat <<JSON
+{
+  "workout_id": $WORKOUT_ID,
+  "exercise_id": $EXERCISE_ID_3,
+  "sets": 3,
+  "reps": 12,
+  "load_kg": 35,
+  "rest_time": 60,
+  "notes": "Inserido na posicao 1",
+  "exercise_order": 1
+}
+JSON
+)
 
-echo ""
+request "POST" "$API_URL/workout-exercises" "201" "$WORKOUT_EXERCISE_BODY_3" "$TOKEN"
 
 echo ""
 echo "===== LIST ORDERED WORKOUT EXERCISES ====="
-curl -s "$API_URL/workouts/$WORKOUT_ID/exercises" \
-  -H "Authorization: Bearer $TOKEN"
+request "GET" "$API_URL/workouts/$WORKOUT_ID/exercises" "200" "" "$TOKEN"
 
-echo ""
 echo ""
 echo "===== BLOCK exercise_order ON PUT ====="
-BLOCK_RESPONSE=$(curl -s -X PUT "$API_URL/workout-exercises/1" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "exercise_order": 1
-  }')
 
-echo "$BLOCK_RESPONSE"
+BLOCK_BODY=$(cat <<JSON
+{
+  "exercise_order": 1
+}
+JSON
+)
+
+request "PUT" "$API_URL/workout-exercises/1" "400" "$BLOCK_BODY" "$TOKEN"
 
 echo ""
 echo "===== SMOKE TEST FINISHED ====="

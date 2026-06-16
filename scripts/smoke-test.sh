@@ -263,6 +263,33 @@ echo ""
 echo "===== LIST ORDERED WORKOUT EXERCISES ====="
 request "GET" "$API_URL/workouts/$WORKOUT_ID/exercises" "200" "" "$TOKEN"
 
+FIRST_EXERCISE_NAME=$(echo "$RESPONSE" | json_get "0.exercise_name")
+FIRST_EXERCISE_ORDER=$(echo "$RESPONSE" | json_get "0.exercise_order")
+
+SECOND_EXERCISE_NAME=$(echo "$RESPONSE" | json_get "1.exercise_name")
+SECOND_EXERCISE_ORDER=$(echo "$RESPONSE" | json_get "1.exercise_order")
+
+THIRD_EXERCISE_NAME=$(echo "$RESPONSE" | json_get "2.exercise_name")
+THIRD_EXERCISE_ORDER=$(echo "$RESPONSE" | json_get "2.exercise_order")
+
+if [ "$FIRST_EXERCISE_NAME" != "Remada Smoke $UNIQUE" ] || [ "$FIRST_EXERCISE_ORDER" != "1" ]; then
+  echo "ERRO: primeiro exercício deveria ser Remada Smoke $UNIQUE na ordem 1"
+  exit 1
+fi
+
+if [ "$SECOND_EXERCISE_NAME" != "Supino Smoke $UNIQUE" ] || [ "$SECOND_EXERCISE_ORDER" != "2" ]; then
+  echo "ERRO: segundo exercício deveria ser Supino Smoke $UNIQUE na ordem 2"
+  exit 1
+fi
+
+if [ "$THIRD_EXERCISE_NAME" != "Puxada Smoke $UNIQUE" ] || [ "$THIRD_EXERCISE_ORDER" != "3" ]; then
+  echo "ERRO: terceiro exercício deveria ser Puxada Smoke $UNIQUE na ordem 3"
+  exit 1
+fi
+
+echo "ORDER OK: Remada, Supino, Puxada"
+
+
 echo ""
 echo "===== BLOCK exercise_order ON PUT ====="
 

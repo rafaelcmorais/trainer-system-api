@@ -4,6 +4,8 @@ API backend para gerenciamento de usuários, alunos, exercícios, treinos e vín
 
 O projeto foi desenvolvido em **Node.js/Express** com **PostgreSQL**, **Docker**, **JWT**, **Zod**, **Prettier**, **Jest/Supertest** e arquitetura em camadas.
 
+Além da execução local com Node.js, o projeto também pode ser executado com **Docker Compose**, subindo a **API** e o **PostgreSQL** em containers.
+
 ## Objetivo do projeto
 
 O Trainer System API tem como objetivo apoiar a organização de treinos em um sistema de personal trainer ou academia.
@@ -23,7 +25,9 @@ A API permite:
 - Node.js
 - Express
 - PostgreSQL
+- Docker
 - Docker Compose
+- Dockerfile
 - JWT
 - bcrypt
 - Zod
@@ -156,52 +160,155 @@ Observação: o PostgreSQL executa scripts em `/docker-entrypoint-initdb.d` apen
 
 ## Variáveis de ambiente
 
+O projeto utiliza um arquivo `.env` local, que não deve ser versionado.
+
 Exemplo de `.env`:
 
 ```env
-PORT=3000
+APP_PORT=3000
+
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=postgres
 DB_NAME=minha_api
+
 JWT_SECRET=sua_chave_secreta
 ```
 
 Ajuste os valores conforme o ambiente local.
 
+Ponto importante:
+
+- para rodar a API localmente com `npm run dev`, use `DB_HOST=localhost`;
+- para rodar a API dentro do Docker Compose, o `docker-compose.yaml` sobrescreve esse valor e usa `DB_HOST=postgres`.
+
+Isso acontece porque, dentro da rede do Docker Compose, a API acessa o banco pelo nome do serviço `postgres`.
+
 Não versionar o arquivo `.env`.
 
-## Instalação e execução
+O arquivo `.env.example` fica versionado como referência segura, sem credenciais reais.
 
-Instalar dependências:
+## Como iniciar o servidor e rodar os testes
+
+Esta seção mostra os comandos principais para iniciar a API e validar o funcionamento do projeto.
+
+### 1. Configurar o ambiente
+
+Crie o arquivo `.env` a partir do exemplo:
+
+```bash
+cp .env.example .env
+```
+
+Para rodar localmente com `npm run dev`, use no `.env`:
+
+```env
+DB_HOST=localhost
+```
+
+Quando a API roda via Docker Compose, o próprio `docker-compose.yaml` usa:
+
+```env
+DB_HOST=postgres
+```
+
+### 2. Rodar localmente
+
+Instale as dependências:
 
 ```bash
 npm install
 ```
 
-Subir o banco com Docker Compose:
+Suba apenas o banco PostgreSQL:
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 ```
 
-Rodar a aplicação em desenvolvimento:
+Inicie a API em modo desenvolvimento:
 
 ```bash
 npm run dev
 ```
 
-A aplicação deve iniciar em:
+Teste se a API e o banco estão respondendo:
+
+```bash
+curl http://localhost:3000/health
+curl http://localhost:3000/health/db
+```
+
+Respostas esperadas:
+
+```json
+{ "status": "ok" }
+```
+
+```json
+{ "status": "ok", "database": "connected" }
+```
+
+### 3. Rodar com Docker Compose
+
+Para subir API e PostgreSQL juntos:
+
+```bash
+docker compose up --build
+```
+
+Para parar os containers:
+
+```bash
+docker compose down
+```
+
+### 4. Rodar os testes
+
+Com a API rodando, execute:
+
+```bash
+npm test
+npm run smoke
+```
+
+O comando `npm test` executa os testes automatizados com Jest.
+
+Resultado esperado:
 
 ```text
-http://localhost:3000
+Test Suites: 2 passed, 2 total
+Tests: 15 passed, 15 total
 ```
 
-## Scripts disponíveis
+O comando `npm run smoke` valida o fluxo principal da API, incluindo health check, conexão com banco, login, criação de aluno, exercícios, treino e vínculo de exercícios ao treino.
+
+Resultado esperado ao final:
+
+```text
+SMOKE TEST FINISHED
+```
+
+### Resumo rápido
+
+Local:
 
 ```bash
+npm install
+docker compose up -d postgres
 npm run dev
+```
+
+Docker completo:
+
+```bash
+docker compose up --build
+```
+
+Testes:
+
+```bash
 npm test
 npm run smoke
 ```
@@ -211,6 +318,101 @@ Descrição:
 - `npm run dev`: inicia a API com Nodemon.
 - `npm test`: executa os testes automatizados com Jest.
 - `npm run smoke`: executa o smoke test de ponta a ponta contra a API em execução.
+
+## Docker Compose
+
+O projeto possui ambiente containerizado com Docker Compose.
+
+Serviços configurados:
+
+```text
+api
+postgres
+```
+
+### Serviço api
+
+O serviço `api` usa o `Dockerfile` da raiz do projeto.
+
+Responsabilidades:
+
+- construir a imagem Node.js da API;
+- instalar dependências de produção com `npm ci --omit=dev`;
+- copiar o código da aplicação;
+- expor a porta `3000`;
+- iniciar a API com `node src/server.js`.
+
+Comando principal:
+
+```bash
+docker compose up --build
+```
+
+### Serviço postgres
+
+O serviço `postgres` usa a imagem:
+
+```text
+postgres:15
+```
+
+Ele recebe:
+
+- `POSTGRES_USER`;
+- `POSTGRES_PASSWORD`;
+- `POSTGRES_DB`.
+
+O banco usa volume local:
+
+```text
+./postgres_data:/var/lib/postgresql/data
+```
+
+E carrega o schema inicial em bancos novos por meio de:
+
+```text
+./database/schema/:/docker-entrypoint-initdb.d:ro
+```
+
+Observação importante:
+
+O PostgreSQL só executa scripts em `/docker-entrypoint-initdb.d` na primeira criação do volume do banco.
+
+### Arquivos Docker
+
+Arquivos relacionados:
+
+```text
+Dockerfile
+.dockerignore
+docker-compose.yaml
+```
+
+O `.dockerignore` evita copiar para a imagem arquivos como:
+
+```text
+node_modules
+.git
+.env
+postgres_data
+rascunhos
+coverage
+npm-debug.log
+```
+
+O `.env` não é copiado para a imagem Docker. Ele é lido em tempo de execução pelo Docker Compose.
+
+### Validação do Compose
+
+Para validar a configuração:
+
+```bash
+docker compose config
+```
+
+Atenção:
+
+Esse comando mostra os valores resolvidos das variáveis de ambiente. Evite colar a saída completa em documentação pública, porque pode exibir senha do banco e `JWT_SECRET`.
 
 ## Health check
 
@@ -295,6 +497,16 @@ curl -i http://localhost:3000/students \
 ```
 
 As rotas principais são protegidas com `authMiddleware`.
+
+O módulo de autenticação segue o padrão em camadas:
+
+```text
+Route → Controller → Service → Repository → Database
+```
+
+O `auth.service` concentra a regra de negócio, como comparação de senha com bcrypt e geração do JWT.
+
+O `auth.repository` concentra a consulta ao banco para buscar usuário ativo por email.
 
 ## Rotas públicas
 
@@ -738,9 +950,7 @@ Resposta esperada:
 ```json
 {
     "error": {
-        "_errors": [
-            "Unrecognized key: \"exercise_order\""
-        ]
+        "_errors": ["Unrecognized key: \"exercise_order\""]
     }
 }
 ```
@@ -858,7 +1068,7 @@ Exemplos:
 }
 ```
 
-Esse comportamento é esperado por causa do PostgreSQL.
+Esse comportamento é esperado por conta do PostgreSQL.
 
 ## Testes automatizados
 
@@ -1046,6 +1256,7 @@ src/
 │   ├── error.middleware.js
 │   └── validation.middleware.js
 ├── repositories/
+│   ├── auth.repository.js
 │   ├── exercise.repository.js
 │   ├── health.repository.js
 │   ├── student.repository.js
@@ -1079,6 +1290,9 @@ src/
 Também existem:
 
 ```text
+Dockerfile
+.dockerignore
+docker-compose.yaml
 database/schema/schema.sql
 scripts/smoke-test.sh
 tests/student.schema.test.js
@@ -1095,18 +1309,8 @@ Workouts            ✅ Consolidado
 Workout Exercises   ✅ Consolidado
 Health              ✅ Consolidado com /health e /health/db
 Testes              ✅ Jest + smoke test
+Docker              ✅ API + PostgreSQL via Docker Compose
 ```
-
-## Próximas melhorias sugeridas
-
-- Criar migrations formais para versionar alterações de banco.
-- Criar seeds para massa inicial de desenvolvimento.
-- Documentar a API com Swagger/OpenAPI.
-- Adicionar testes automatizados de endpoints com Supertest.
-- Criar roles/permissões para diferenciar usuários comuns e administradores.
-- Criar endpoint específico para reordenar exercícios já vinculados ao treino.
-- Criar tabela `student_body_metrics` para histórico corporal do aluno.
-- Criar rotina opcional de limpeza para dados gerados pelo smoke test.
 
 ## Diagnóstico técnico
 
@@ -1134,4 +1338,5 @@ Como projeto de extensão web backend, a entrega apresenta boa maturidade técni
 - health check da API e do banco;
 - testes automatizados;
 - smoke test de ponta a ponta;
+- Docker Compose subindo API e PostgreSQL;
 - commits organizados.
